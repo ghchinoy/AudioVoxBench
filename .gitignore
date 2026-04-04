@@ -17,7 +17,7 @@ xcuserdata/
 config.json
 
 # Local Data & Assets (Reproducibility)
-tests/golden_set.json
+tests/
 seed_data/
 docs/benchmarks/
 
