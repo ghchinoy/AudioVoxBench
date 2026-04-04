@@ -1,0 +1,42 @@
+[
+  {
+    "id": "probe_d1",
+    "title": "Stormy Mountain",
+    "prompt": "Dark aggressive thunderstorm vibe",
+    "caption": "A chaotic thunderstorm over a jagged mountain range with lightning bolts",
+    "type": "image_probe",
+    "expected_matches": ["metal_01", "industrial_01"]
+  },
+  {
+    "id": "probe_d2",
+    "title": "Peaceful Beach",
+    "prompt": "Calm relaxing tropical sunset vibe",
+    "caption": "A peaceful tropical beach at sunset with calm turquoise water",
+    "type": "image_probe",
+    "expected_matches": ["reggae_01", "ambient_01"]
+  },
+  {
+    "id": "probe_e1",
+    "title": "Solo Piano",
+    "prompt": "A simple solo piano melody",
+    "caption": "A lone grand piano on a white stage",
+    "type": "audio_probe",
+    "expected_matches": ["classical_01", "ambient_01"]
+  },
+  {
+    "id": "probe_e2",
+    "title": "Metal Riff",
+    "prompt": "A heavy distorted electric guitar riff",
+    "caption": "A stack of amplifiers in a dark room",
+    "type": "audio_probe",
+    "expected_matches": ["metal_01"]
+  },
+  {
+    "id": "probe_e3",
+    "title": "Sub Bass",
+    "prompt": "A deep pulsing sub-bass loop",
+    "caption": "Visual representation of sound waves in green neon",
+    "type": "audio_probe",
+    "expected_matches": ["dubstep_01"]
+  }
+]

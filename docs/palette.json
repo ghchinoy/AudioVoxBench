@@ -1,0 +1,36 @@
+{
+  "dark_theme": {
+    "name": "Lyria Studio Dark Theme",
+    "colors": {
+      "background_deep": "#0f1115",
+      "background_card": "#1a1d24",
+      "background_panel": "#111318",
+      "border_subtle": "#2d3748",
+      "border_hover": "#334155",
+      "text_primary": "#ffffff",
+      "text_secondary": "#e2e8f0",
+      "text_muted": "#94a3b8",
+      "accent_primary": "#4facfe",
+      "accent_secondary": "#00f2fe",
+      "accent_success": "#10b981",
+      "accent_danger": "#ef4444"
+    }
+  },
+  "light_theme": {
+    "name": "Lyria Studio Light Theme",
+    "colors": {
+      "background_deep": "#ffffff",
+      "background_card": "#f8fafc",
+      "background_panel": "#f1f5f9",
+      "border_subtle": "#e2e8f0",
+      "border_hover": "#cbd5e1",
+      "text_primary": "#0f1115",
+      "text_secondary": "#334155",
+      "text_muted": "#64748b",
+      "accent_primary": "#0284c7",
+      "accent_secondary": "#0ea5e9",
+      "accent_success": "#16a34a",
+      "accent_danger": "#dc2626"
+    }
+  }
+}

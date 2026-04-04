@@ -39,18 +39,19 @@ guard let token = ProcessInfo.processInfo.environment["GCP_ACCESS_TOKEN"] else {
     exit(1)
 }
 
-// 2. Load Golden Set
-let fileURL = URL(fileURLWithPath: config.golden_set_path)
+// 2. Load Data (accepts arg)
+let inputPath = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : config.golden_set_path
+let fileURL = URL(fileURLWithPath: inputPath)
 guard let data = try? Data(contentsOf: fileURL),
       let seeds = try? JSONDecoder().decode([TrackSeed].self, from: data) else {
-    print("❌ Error: Could not load golden_set.json")
+    print("❌ Error: Could not load data at \(inputPath)")
     exit(1)
 }
 
 let genService = TrackGenerationService()
 let imgService = ImageGenerationService()
 
-print("Loaded \(seeds.count) prompts. Starting generation...")
+print("Loaded \(seeds.count) items from \(inputPath). Starting generation...")
 
 for seed in seeds {
     print("\n  [Seed] Generating '\(seed.title)'...")

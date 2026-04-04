@@ -1,0 +1,72 @@
+[
+  {
+    "id": "jazz_01",
+    "title": "Midnight Sax",
+    "prompt": "Smooth jazz, expressive saxophone solo, upright bass, smoky lounge atmosphere",
+    "caption": "A close up of a polished gold saxophone in a dimly lit jazz club",
+    "ground_truth_queries": ["smooth jazz", "saxophone solo"]
+  },
+  {
+    "id": "metal_01",
+    "title": "Industrial Rage",
+    "prompt": "Heavy metal, distorted electric guitars, fast double-kick drums, aggressive energy",
+    "caption": "A dark, gritty industrial factory with sparks flying from machinery",
+    "ground_truth_queries": ["heavy metal", "aggressive guitars"]
+  },
+  {
+    "id": "ambient_01",
+    "title": "Cloud Drift",
+    "prompt": "Ambient electronic, soft synthesizer pads, evolving textures, no percussion",
+    "caption": "Soft white clouds drifting slowly across a pale blue sky",
+    "ground_truth_queries": ["ambient music", "relaxing pads"]
+  },
+  {
+    "id": "bollywood_01",
+    "title": "Mumbai Glow",
+    "prompt": "Modern Bollywood pop, rhythmic dhol drums, sitar melodies, high-energy vocals",
+    "caption": "A vibrant Indian festival with colorful powders flying in the air",
+    "ground_truth_queries": ["bollywood pop", "sitar dance music"]
+  },
+  {
+    "id": "dubstep_01",
+    "title": "Subduction",
+    "prompt": "Dubstep, heavy wobbling sub-bass, syncopated drum pattern, aggressive synthesis",
+    "caption": "Abstract geometric shapes pulsating with green neon energy",
+    "ground_truth_queries": ["dubstep bass", "pulsating synths"]
+  },
+  {
+    "id": "classical_01",
+    "title": "Vivaldi Echo",
+    "prompt": "Classical chamber music, string quartet, fast intricate violin passages",
+    "caption": "An ornate 18th century opera house with crystal chandeliers",
+    "ground_truth_queries": ["classical strings", "chamber quartet"]
+  },
+  {
+    "id": "reggae_01",
+    "title": "Island Pulse",
+    "prompt": "Roots reggae, off-beat guitar skanks, deep melodic bassline, relaxed tempo",
+    "caption": "A rustic wooden shack on a Caribbean beach with palm trees",
+    "ground_truth_queries": ["roots reggae", "beach vibes"]
+  },
+  {
+    "id": "industrial_01",
+    "title": "Steel Works",
+    "prompt": "Industrial techno, metallic percussion, repetitive mechanical rhythms, dark atmosphere",
+    "caption": "Rusting steel girders in an abandoned shipyard at dusk",
+    "ground_truth_queries": ["industrial techno", "mechanical sounds"]
+  },
+  {
+    "id": "country_01",
+    "title": "Dusty Road",
+    "prompt": "Classic country, acoustic guitar strumming, slide guitar accents, storytelling mood",
+    "caption": "A lone pickup truck driving down a dusty dirt road in the American West",
+    "ground_truth_queries": ["country folk", "acoustic storytelling"]
+  },
+  {
+    "id": "synthwave_01",
+    "title": "Vector Run",
+    "prompt": "80s synthwave, cinematic pads, driving arpeggiated bass, retro-futuristic",
+    "caption": "A retro-futuristic grid landscape with a glowing purple sun on the horizon",
+    "ground_truth_queries": ["80s synthwave", "retro futuristic synths"]
+  }
+]
