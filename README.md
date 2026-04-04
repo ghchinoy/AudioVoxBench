@@ -42,7 +42,11 @@ To run this suite independently, you need:
    ```
 
 ## Benchmark Methodology
-The suite uses a **Golden Set** methodology to simulate real-world semantic search pressure. We first use `TrackSeeder` to populate a local vector database with a diverse set of indexed tracks (the **Target Set**). We then execute a series of **Hold-out Probes**—media assets (audio clips and images) that are *not* part of the indexed database. By measuring the ability of various embedding strategies to retrieve semantically related tracks from the Target Set using these unrelated media probes, we calculate the **Mean Reciprocal Rank (MRR)** to determine search precision.
+The suite uses a **Golden Set** methodology to simulate real-world semantic search pressure. 
+
+1. **Test Set Generation**: We first use `TrackSeeder` to populate a local vector database with a diverse set of indexed tracks (the **Target Set**). These tracks are generated using specific prompts and captions to ensure a high-fidelity baseline.
+2. **Hold-out Probes**: We then execute a series of **Hold-out Probes**—media assets (audio clips and images) that are *intentionally excluded* from the indexed database. These probes represent "novel" user inputs.
+3. **Execution & Evaluation**: The application iterates through five embedding strategies (A-E). For each probe, it calculates the **Mean Reciprocal Rank (MRR)**—a metric that specifically rewards the "bullseye" rank of the semantically related track within the Target Set. This allows us to objectively determine which strategy offers the highest precision for cross-modal discovery.
 
 ### Using Existing Assets
 `TrackSeeder` includes an optimization to skip expensive API generation if assets already exist locally. To use your own media library:
