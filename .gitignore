@@ -1,0 +1,25 @@
+# Swift Build
+.build/
+Packages/
+Package.resolved
+
+# Xcode
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+
+# Local Database
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Configuration & Secrets
+config.json
+
+# Local Data & Assets (Reproducibility)
+tests/golden_set.json
+seed_data/
+docs/benchmarks/
+
+# macOS
+.DS_Store

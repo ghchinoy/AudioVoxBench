@@ -1,0 +1,12 @@
+{
+  "project_id": "your-gcp-project-id",
+  "location": "us-central1",
+  "bucket_name": "your-gcs-bucket-name",
+  "seed_data_path": "./seed_data",
+  "golden_set_path": "./tests/golden_set.json",
+  "models": {
+    "embedding": "gemini-embedding-2-preview",
+    "audio": "lyria-3-clip-preview",
+    "image": "gemini-3.1-flash-image-preview"
+  }
+}

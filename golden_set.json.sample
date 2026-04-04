@@ -1,0 +1,9 @@
+[
+  {
+    "id": "track_001",
+    "title": "Sample Track",
+    "prompt": "Vibrant 80s synthwave, driving beat, gated reverb on snare",
+    "caption": "A futuristic city at night with neon lights",
+    "ground_truth_queries": ["80s synthwave", "neon city night"]
+  }
+]
