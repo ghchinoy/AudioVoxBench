@@ -60,32 +60,41 @@ for seed in seeds {
     
     Task {
         do {
-            // A. Generate Audio
-            let result = try await genService.generateAudio(
-                prompt: seed.prompt, 
-                model: config.models.audio,
-                authToken: token,
-                projectID: config.project_id,
-                location: "global" // Lyria interactions is global
-            )
-            print("    ✅ Audio Success: Received \(result.audioData.count) bytes")
-            
             let audioPath = "\(config.seed_data_path)/\(seed.id).mp3"
-            try? FileManager.default.createDirectory(atPath: config.seed_data_path, withIntermediateDirectories: true)
-            try result.audioData.write(to: URL(fileURLWithPath: audioPath))
-            
-            // B. Generate Image
-            let imgResult = try await imgService.generateImage(
-                prompt: seed.caption, 
-                model: config.models.image,
-                authToken: token,
-                projectID: config.project_id,
-                location: "global" // Preview models are global
-            )
-            print("    ✅ Image Success: Received \(imgResult.imageData.count) bytes")
-            
             let imagePath = "\(config.seed_data_path)/\(seed.id).jpg"
-            try imgResult.imageData.write(to: URL(fileURLWithPath: imagePath))
+            
+            // A. Generate Audio (if needed)
+            if !FileManager.default.fileExists(atPath: audioPath) {
+                print("    🎵 Generating Audio for '\(seed.title)'...")
+                let result = try await genService.generateAudio(
+                    prompt: seed.prompt, 
+                    model: config.models.audio,
+                    authToken: token,
+                    projectID: config.project_id,
+                    location: "global"
+                )
+                print("    ✅ Audio Success: Received \(result.audioData.count) bytes")
+                try? FileManager.default.createDirectory(atPath: config.seed_data_path, withIntermediateDirectories: true)
+                try result.audioData.write(to: URL(fileURLWithPath: audioPath))
+            } else {
+                print("    ⏭️  Skipping Audio generation: \(audioPath) already exists.")
+            }
+            
+            // B. Generate Image (if needed)
+            if !FileManager.default.fileExists(atPath: imagePath) {
+                print("    🎨 Generating Image for '\(seed.title)'...")
+                let imgResult = try await imgService.generateImage(
+                    prompt: seed.caption, 
+                    model: config.models.image,
+                    authToken: token,
+                    projectID: config.project_id,
+                    location: "global"
+                )
+                print("    ✅ Image Success: Received \(imgResult.imageData.count) bytes")
+                try imgResult.imageData.write(to: URL(fileURLWithPath: imagePath))
+            } else {
+                print("    ⏭️  Skipping Image generation: \(imagePath) already exists.")
+            }
 
             // C. GCS UPLOAD
             func upload(filePath: String, destination: String, contentType: String) {

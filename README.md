@@ -44,6 +44,12 @@ To run this suite independently, you need:
 ## Benchmark Methodology
 The suite uses a **Golden Set** methodology to simulate real-world semantic search pressure. We first use `TrackSeeder` to populate a local vector database with a diverse set of indexed tracks (the **Target Set**). We then execute a series of **Hold-out Probes**—media assets (audio clips and images) that are *not* part of the indexed database. By measuring the ability of various embedding strategies to retrieve semantically related tracks from the Target Set using these unrelated media probes, we calculate the **Mean Reciprocal Rank (MRR)** to determine search precision.
 
+### Using Existing Assets
+`TrackSeeder` includes an optimization to skip expensive API generation if assets already exist locally. To use your own media library:
+1. Place your MP3 and JPG files in the `seed_data/` folder.
+2. Name them using the `id` from your `golden_set.json` (e.g., `track_001.mp3`, `track_001.jpg`).
+3. Run `swift run TrackSeeder`. The tool will detect the files, skip Lyria/Gemini generation, and perform only the GCS upload and metadata preparation.
+
 ## Results & Reports
 Benchmark results are stored in `docs/benchmarks/run_[date].md`.
 Current "Winner": **Strategy C (Semantic Text-Augmentation)**. Strategy C consistently achieves a **1.0 MRR** even when queried with purely non-text media probes.
