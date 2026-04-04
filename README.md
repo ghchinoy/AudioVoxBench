@@ -2,6 +2,8 @@
 
 `AudioVoxBench` is a standalone Swift command-line suite designed to evaluate semantic search relevance using the **Gemini Embedding 2** model. It allows developers to compare different indexing strategies (text-only vs. interleaved multimodal) to determine the highest possible search recall.
 
+![Workflow](docs/benchmarking_workflow.png)
+
 ## Goals
 - **Objective Measurement**: Calculate Mean Reciprocal Rank (MRR) for various "ensemble" embedding strategies.
 - **Data-Driven Roadmap**: Identify if adding raw audio and image data to embeddings actually improves user search experience compared to rich text metadata.
@@ -31,7 +33,6 @@ To run this suite independently, you need:
 2. **Prepare Data**: Edit `config.json` with your GCP Project details and `tests/golden_set.json` with your desired prompts.
 3. **Seed Assets**: 
    ```bash
-   cd standalone/AudioVoxBench
    export GCP_ACCESS_TOKEN=$(gcloud auth print-access-token)
    swift run TrackSeeder
    ```
@@ -40,18 +41,21 @@ To run this suite independently, you need:
    swift run AudioVoxBench
    ```
 
+## Benchmark Methodology
+The suite uses a **Golden Set** methodology to simulate real-world semantic search pressure. We first use `TrackSeeder` to populate a local vector database with a diverse set of indexed tracks (the **Target Set**). We then execute a series of **Hold-out Probes**—media assets (audio clips and images) that are *not* part of the indexed database. By measuring the ability of various embedding strategies to retrieve semantically related tracks from the Target Set using these unrelated media probes, we calculate the **Mean Reciprocal Rank (MRR)** to determine search precision.
+
 ## Results & Reports
 Benchmark results are stored in `docs/benchmarks/run_[date].md`.
-Current "Winner": **Strategy C (Semantic Text-Augmentation)**.
+Current "Winner": **Strategy C (Semantic Text-Augmentation)**. Strategy C consistently achieves a **1.0 MRR** even when queried with purely non-text media probes.
 
-## Pricing Estimates (3-Track Run)
-Running this benchmark with the default 3-track "Golden Set" costs approximately **$1.28 USD** on Vertex AI.
+## Pricing Estimates (15-Asset Run)
+Running this benchmark with 10 database tracks and 5 hold-out probes (13 audio clips, 12 images) costs approximately **$5.50 USD** on Vertex AI.
 
 | Component | Quantity | Est. Unit Cost | Subtotal |
 | :--- | :--- | :--- | :--- |
-| **Audio** (Lyria 3) | 3 clips (30s ea) | $0.36 / clip | **$1.08** |
-| **Images** (Gemini 3.1 Flash) | 3 images (1K) | $0.067 / image | **$0.20** |
-| **Embeddings** (Gemini 2) | 100+ calls | $0.025 / 1M tokens | **<$0.01** |
-| **TOTAL** | | | **~$1.28** |
+| **Audio** (Lyria 3) | 13 clips (30s ea) | $0.36 / clip | **$4.68** |
+| **Images** (Gemini 3.1 Flash) | 12 images (1K) | $0.067 / image | **$0.80** |
+| **Embeddings** (Gemini 2) | 200+ calls | $0.025 / 1M tokens | **<$0.01** |
+| **TOTAL** | | | **~$5.49** |
 
 *Note: Strategy C (Text-only) is the most cost-effective as it bypasses raw image/audio generation costs for subsequent searches.*
