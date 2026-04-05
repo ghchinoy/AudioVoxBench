@@ -1,6 +1,6 @@
 # AudioVoxBench: Multimodal Embedding Benchmark
 
-`AudioVoxBench` is a standalone Swift command-line suite designed to evaluate semantic search relevance using the **Gemini Embedding 2** model. It allows developers to compare different indexing strategies (text-only vs. interleaved multimodal) to determine the highest possible search recall.
+`AudioVoxBench` is a standalone Swift command-line suite designed to evaluate semantic search relevance using the **Gemini Embedding 2** model. It allows developers to compare different indexing strategies (text-only vs. interleaved multimodal) to determine the highest possible search recall. For more background, see [Multimodal Ground Truth: Building AudioVoxBench](https://ghc.wtf/writing/multimodal-ground-truth-building-audiovoxbench/)
 
 ![Workflow](docs/benchmarking_workflow.png)
 
