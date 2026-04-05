@@ -58,14 +58,15 @@ enum EmbeddingStrategy: String, CaseIterable {
             let quality = (track.mosic ?? 4.5) > 4.5 ? "Pristine, high-fidelity audio." : "Standard audio."
             return [.text("Prompt: \(track.prompt). Visual: \(track.caption). Quality: \(quality)")]
         case .multimodalImage:
-            let imageUri = "gs://\(config.bucket_name)/bench/images/\(track.id).jpg"
+            // Use the image_url from the track if it exists, otherwise fall back to bench path
+            let imageUri = track.image_url ?? "gs://\(config.bucket_name)/bench/images/\(track.id).jpg"
             return [
                 .text(track.prompt),
                 .file(uri: imageUri, mimeType: "image/jpeg")
             ]
         case .fullSpectrum:
-            let imageUri = "gs://\(config.bucket_name)/bench/images/\(track.id).jpg"
-            let audioUri = "gs://\(config.bucket_name)/bench/audio/\(track.id).mp3"
+            let imageUri = track.image_url ?? "gs://\(config.bucket_name)/bench/images/\(track.id).jpg"
+            let audioUri = track.audio_url ?? "gs://\(config.bucket_name)/bench/audio/\(track.id).mp3"
             return [
                 .text("Prompt: \(track.prompt). Caption: \(track.caption)"),
                 .file(uri: imageUri, mimeType: "image/jpeg"),
@@ -76,7 +77,7 @@ enum EmbeddingStrategy: String, CaseIterable {
 }
 
 // --- START ---
-print("🚀 AudioVox Cross-Modal Discovery Evaluation (Phase 2)")
+print("🚀 AudioVox Cross-Modal Discovery Evaluation")
 
 // 1. Load Config
 let configURL = URL(fileURLWithPath: "config.json")
@@ -91,24 +92,29 @@ guard let token = ProcessInfo.processInfo.environment["GCP_ACCESS_TOKEN"] else {
     exit(1)
 }
 
-// 2. Load Database Tracks
-let dbURL = URL(fileURLWithPath: "tests/golden_set_phase2.json")
+// 2. Parse Arguments
+// Usage: swift run AudioVoxBench [tracks.json] [probes.json]
+let dbPath = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "tests/golden_set_phase2.json"
+let probesPath = CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "tests/probes_phase2.json"
+
+// 3. Load Database Tracks
+let dbURL = URL(fileURLWithPath: dbPath)
 guard let dbData = try? Data(contentsOf: dbURL),
       let tracks = try? JSONDecoder().decode([TrackBench].self, from: dbData) else {
-    print("❌ Error: Could not load golden_set_phase2.json")
+    print("❌ Error: Could not load tracks at \(dbPath)")
     exit(1)
 }
 
-// 3. Load Probes
-let probesURL = URL(fileURLWithPath: "tests/probes_phase2.json")
+// 4. Load Probes
+let probesURL = URL(fileURLWithPath: probesPath)
 guard let probesData = try? Data(contentsOf: probesURL),
       let probes = try? JSONDecoder().decode([TrackBench].self, from: probesData) else {
-    print("❌ Error: Could not load probes_phase2.json")
+    print("❌ Error: Could not load probes at \(probesPath)")
     exit(1)
 }
 
-print("Indexed Database: \(tracks.count) tracks")
-print("Probes: \(probes.count) (2 Image, 3 Audio)")
+print("📍 Indexing Database: \(dbPath) (\(tracks.count) tracks)")
+print("🔍 Querying with Probes: \(probesPath) (\(probes.count) probes)")
 
 let embedService = EmbeddingService()
 var summaryResults: [String: Double] = [:]
@@ -126,6 +132,16 @@ for strategy in EmbeddingStrategy.allCases {
             print("  Indexing...")
             for track in tracks {
                 let parts = strategy.parts(track: track, config: config)
+                
+                // Validate parts for Multimodal/Full-Spectrum
+                if strategy == .multimodalImage || strategy == .fullSpectrum {
+                    let hasMissingAsset = parts.contains { part in
+                        if case .file(let uri, _) = part { return uri.isEmpty }
+                        return false
+                    }
+                    if hasMissingAsset { continue }
+                }
+
                 let vector = try await embedService.getEmbedding(for: parts, authToken: token, projectID: config.project_id, location: "global")
                 try store.insertTrack(id: track.id, title: track.title, prompt: track.prompt, vector: vector)
             }
@@ -136,10 +152,11 @@ for strategy in EmbeddingStrategy.allCases {
             for probe in probes {
                 var queryParts: [EmbeddingService.ContentPart] = []
                 if probe.type == "image_probe" {
-                    let uri = "gs://\(config.bucket_name)/bench/images/\(probe.id).jpg"
+                    // Try to use probe image_url if exists, otherwise fallback
+                    let uri = probe.image_url ?? "gs://\(config.bucket_name)/bench/images/\(probe.id).jpg"
                     queryParts = [.file(uri: uri, mimeType: "image/jpeg")]
                 } else if probe.type == "audio_probe" {
-                    let uri = "gs://\(config.bucket_name)/bench/audio/\(probe.id).mp3"
+                    let uri = probe.audio_url ?? "gs://\(config.bucket_name)/bench/audio/\(probe.id).mp3"
                     queryParts = [.file(uri: uri, mimeType: "audio/mpeg")]
                 }
                 
@@ -148,16 +165,15 @@ for strategy in EmbeddingStrategy.allCases {
                 
                 var bestRank: Int? = nil
                 for (index, result) in results.enumerated() {
-                    if probe.expected_matches?.contains(result.id) ?? false {
+                    // If we have explicit expected matches, use them
+                    if let expected = probe.expected_matches, expected.contains(result.id) {
                         bestRank = index
                         break
                     }
-                }
-                
-                if probe.id == "probe_e1" {
-                    print("    🔍 Jitter Analysis for [probe_e1]:")
-                    for (index, result) in results.prefix(5).enumerated() {
-                        print("      \(index + 1). \(result.id): \(String(format: "%.4f", result.distance))")
+                    // Otherwise, if the probe ID matches the track ID (Self-search test)
+                    if result.id == probe.id {
+                        bestRank = index
+                        break
                     }
                 }
                 
@@ -165,16 +181,20 @@ for strategy in EmbeddingStrategy.allCases {
                     totalRR += 1.0 / Double(rank + 1)
                     print("    ✅ Probe [\(probe.id)] matched '\(results[rank].id)' at rank \(rank + 1)")
                 } else {
-                    print("    ❌ Probe [\(probe.id)] failed to find expected matches in top 10.")
+                    print("    ❓ Probe [\(probe.id)] top 3 matches:")
+                    for (index, result) in results.prefix(3).enumerated() {
+                        let matchedTitle = tracks.first(where: { $0.id == result.id })?.title ?? "Unknown"
+                        print("      \(index + 1). \(matchedTitle) (\(result.id)) - distance: \(String(format: "%.4f", result.distance))")
+                    }
                 }
             }
             
             let mrr = totalRR / Double(probes.count)
             summaryResults[strategy.rawValue] = mrr
-            print("  📈 Phase 2 MRR for \(strategy.rawValue): \(String(format: "%.4f", mrr))")
+            print("  📈 MRR for \(strategy.rawValue): \(String(format: "%.4f", mrr))")
             
         } catch {
-            print("  ❌ Error in strategy \(strategy.rawValue): \(error.localizedDescription)")
+            print("  ❌ Error: \(error.localizedDescription)")
         }
         semaphore.signal()
     }
@@ -196,14 +216,14 @@ let dateStr = dateFormatter.string(from: Date())
 let reportPath = "docs/benchmarks/run_\(dateStr).md"
 
 var report = """
-# AudioVoxBench Phase 2 Report
+# AudioVoxBench Evaluation Report
 *Run Date: \(dateStr)*
 
 ## Configuration
 - **Project**: \(config.project_id)
 - **Model**: \(config.models.embedding)
-- **Dataset Size**: \(tracks.count) tracks
-- **Probe Count**: \(probes.count)
+- **Database**: \(dbPath) (\(tracks.count) tracks)
+- **Probes**: \(probesPath) (\(probes.count) probes)
 
 ## Results (Mean Reciprocal Rank)
 
@@ -224,4 +244,4 @@ do {
     print("\n❌ Failed to save report: \(error.localizedDescription)")
 }
 
-print("\n✅ Phase 2 Evaluation complete.")
+print("\n✅ Evaluation complete.")
