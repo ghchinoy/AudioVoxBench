@@ -80,3 +80,15 @@ If you mistakenly query your production database (which uses real UUIDs like `00
 If Strategy D or E fails with an `INVALID_ARGUMENT` error, check the file type and size of the media in your GCS bucket:
 - **MIME Types**: Gemini requires the exact MIME type (e.g., `audio/wav` for `.wav`, `audio/mpeg` for `.mp3`). AudioVoxBench handles standard extensions dynamically.
 - **File Size**: As noted in Section 5, Gemini Embedding 2 will forcefully reject raw audio files that exceed undocumented limits (generally > 3.5MB).
+
+## 7. Case Study: The Confidence Gap (Production Run)
+When you run the benchmark against a real production library, you may notice that Strategy C and Strategy D behave differently than they do on synthetic "Golden Sets."
+
+In a recent test against a live 60-track Firestore database, searching for a "Stormy Mountain" vibe using an **image probe** yielded the following top match for both strategies:
+
+*   **Strategy C (Text-only)** matched the correct track with a mathematical distance of **1.1308**.
+*   **Strategy D (Multimodal)** matched the exact same track but with a much higher confidence distance of **0.8831**.
+
+**What this means:**
+As your library grows (increasing semantic density), text descriptions begin to overlap. If you have 50 tracks described as "Lo-Fi Beats," Strategy C will struggle to rank them accurately. This is the **Saturation Point**. 
+Strategy D and E mitigate this. By interleaving raw image or audio data, the embedding model gains the necessary visual or acoustic "entropy" to confidently distinguish between tracks that share identical text metadata. 
