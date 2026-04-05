@@ -65,3 +65,18 @@ When benchmarking against real production data, you may encounter `INVALID_ARGUM
 **The Solution**: 
 - **Graceful Degradation**: `AudioVoxBench` is designed to gracefully catch and report these API errors. If a track is too large, it will print a warning and skip that specific track for Strategy E, while still completing the benchmark for all other valid tracks and strategies.
 - **Future Optimization**: If Strategy E becomes the dominant production approach, you should segment or compress your audio files (e.g., passing only the first 30 seconds as a lower-bitrate MP3) before requesting the embedding. For semantic "vibe" checking, the first 15-30 seconds provides ample acoustic entropy.
+
+## 6. Interpreting Results (Troubleshooting 0.0000 MRR)
+If you run a benchmark on your production data and receive an MRR of `0.0000` across all strategies, it typically indicates a **Mismatch between Database and Probes**, rather than a model failure.
+
+### The "Zero MRR" Phenomenon
+When AudioVoxBench evaluates search precision, it scores results against a list of `expected_matches` defined in the probe JSON. 
+If you mistakenly query your production database (which uses real UUIDs like `008c1346...`) using the synthetic sample probes (which expect IDs like `metal_01`), the benchmark will correctly execute the semantic search, but mathematically fail to find the expected ID in the top 10 results.
+
+**Symptom**: The benchmark logs `❓ Probe top 3 matches` (indicating it found semantic matches) but scores a `0.0000` MRR.
+**Solution**: Always use the automated 80/20 Corpus Split via `TrackIngestor`. This ensures the hold-out probes are mathematically mapped to the exact UUIDs of their corresponding tracks in the database.
+
+### API Invalid Argument Errors
+If Strategy D or E fails with an `INVALID_ARGUMENT` error, check the file type and size of the media in your GCS bucket:
+- **MIME Types**: Gemini requires the exact MIME type (e.g., `audio/wav` for `.wav`, `audio/mpeg` for `.mp3`). AudioVoxBench handles standard extensions dynamically.
+- **File Size**: As noted in Section 5, Gemini Embedding 2 will forcefully reject raw audio files that exceed undocumented limits (generally > 3.5MB).
