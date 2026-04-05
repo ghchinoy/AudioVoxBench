@@ -8,5 +8,7 @@
     "embedding": "gemini-embedding-2-preview",
     "audio": "lyria-3-clip-preview",
     "image": "gemini-3.1-flash-image-preview"
-  }
+  },
+  "firestore_database": "your-database-id",
+  "firestore_collection": "your-collection-name"
 }

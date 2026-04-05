@@ -6,7 +6,8 @@ let package = Package(
     platforms: [.macOS(.v14)],
     products: [
         .executable(name: "AudioVoxBench", targets: ["AudioVoxBench"]),
-        .executable(name: "TrackSeeder", targets: ["TrackSeeder"])
+        .executable(name: "TrackSeeder", targets: ["TrackSeeder"]),
+        .executable(name: "TrackIngestor", targets: ["TrackIngestor"])
     ],
     dependencies: [
         .package(url: "https://github.com/groue/GRDB.swift.git", from: "6.29.3")
@@ -22,6 +23,11 @@ let package = Package(
         ),
         .executableTarget(
             name: "TrackSeeder",
+            dependencies: [],
+            swiftSettings: [.define("CLI")]
+        ),
+        .executableTarget(
+            name: "TrackIngestor",
             dependencies: [],
             swiftSettings: [.define("CLI")]
         ),

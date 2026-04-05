@@ -11,7 +11,8 @@
 
 ## Components
 1. **`TrackSeeder`**: A tool to generate audio (via Lyria 3) and images (via **Gemini 3.1 Flash Image / Nano Banana 2**) for a set of prompts defined in `golden_set.json`, and upload them to Google Cloud Storage.
-2. **`AudioVoxBench`**: The main evaluation tool. It iterates through strategies, indexes the "Golden Set" into a local vector database (sqlite-vec), and runs ground-truth queries to score recall.
+2. **`TrackIngestor`**: A tool to import existing tracks from a Firestore collection (e.g., production history) into the benchmark format.
+3. **`AudioVoxBench`**: The main evaluation tool. It iterates through strategies, indexes the "Golden Set" into a local vector database (sqlite-vec), and runs ground-truth queries to score recall.
 
 ## Prerequisites
 To run this suite independently, you need:
@@ -53,6 +54,22 @@ The suite uses a **Golden Set** methodology to simulate real-world semantic sear
 1. Place your MP3 and JPG files in the `seed_data/` folder.
 2. Name them using the `id` from your `golden_set.json` (e.g., `track_001.mp3`, `track_001.jpg`).
 3. Run `swift run TrackSeeder`. The tool will detect the files, skip Lyria/Gemini generation, and perform only the GCS upload and metadata preparation.
+
+### Using Production Data (TrackIngestor)
+Instead of generating synthetic seeds, you can ingest real data from your Firestore database:
+
+```bash
+export GCP_ACCESS_TOKEN=$(gcloud auth print-access-token)
+
+# Ingest specific user data
+swift run TrackIngestor --email "user@example.com" --limit 100 --output "tests/production_data.json"
+
+# Ingest all data (Admin Mode)
+swift run TrackIngestor --limit 500 --output "tests/admin_dump.json"
+
+# Run benchmark on ingested data
+swift run AudioVoxBench tests/production_data.json
+```
 
 ## Results & Reports
 Benchmark results are stored in `docs/benchmarks/run_[date].md`.
