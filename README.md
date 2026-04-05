@@ -46,6 +46,8 @@ The fastest way to validate the system is using the included synthetic "Golden S
 ## Production Data Benchmarking
 For instructions on how to evaluate a large, existing Firestore corpus (e.g., 600+ tracks) using the **80/20 Corpus Split** and **Self-Retrieval Evaluation** methodology, please read the [**Production Benchmarking Guide**](docs/PRODUCTION_BENCHMARKING.md).
 
+> **Pricing Note:** Running AudioVoxBench against *existing* production data is incredibly cost-effective because it skips all Lyria and Gemini Image generation. A 60-track benchmark costs **<$0.01 USD**, and a massive 600-track benchmark costs only **~$0.07 USD** (embedding costs only).
+
 ## Results & Reports
 Benchmark results are automatically stored in `docs/benchmarks/run_[date].md`.
 Current "Winner": **Strategy C (Semantic Text-Augmentation)**. Strategy C consistently achieves a **1.0 MRR** even when queried with purely non-text media probes.

@@ -92,3 +92,15 @@ In a recent test against a live 60-track Firestore database, searching for a "St
 **What this means:**
 As your library grows (increasing semantic density), text descriptions begin to overlap. If you have 50 tracks described as "Lo-Fi Beats," Strategy C will struggle to rank them accurately. This is the **Saturation Point**. 
 Strategy D and E mitigate this. By interleaving raw image or audio data, the embedding model gains the necessary visual or acoustic "entropy" to confidently distinguish between tracks that share identical text metadata. 
+
+## 8. Cost Breakdown (Production Run)
+The greatest advantage of benchmarking your production dataset is that it bypasses the expensive generation phase entirely. You only pay for the Embedding API calls.
+
+* **Audio/Image Generation:** $0.00 (Assets already exist)
+* **Gemini Embedding 2 Cost:** $0.025 per 1 Million tokens
+
+### Estimated Costs
+- **60-Track Benchmark** (60 DB + 14 Probes * 5 strategies = ~370 embedding calls): **~$0.009 USD**
+- **600-Track Benchmark** (480 DB + 120 Probes * 5 strategies = ~3,000 embedding calls): **~$0.07 USD**
+
+You can run deep, cross-modal semantic analyses on massive production catalogs for pennies, making continuous evaluation highly practical.
