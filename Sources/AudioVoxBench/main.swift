@@ -41,6 +41,14 @@ struct TrackBench: Codable {
     let expected_matches: [String]?
 }
 
+func mime(for uri: String, defaultMime: String) -> String {
+    if uri.lowercased().hasSuffix(".png") { return "image/png" }
+    if uri.lowercased().hasSuffix(".wav") { return "audio/wav" }
+    if uri.lowercased().hasSuffix(".mp3") { return "audio/mpeg" }
+    if uri.lowercased().hasSuffix(".jpg") || uri.lowercased().hasSuffix(".jpeg") { return "image/jpeg" }
+    return defaultMime
+}
+
 enum EmbeddingStrategy: String, CaseIterable {
     case promptOnly = "A (Baseline)"
     case promptAndCaption = "B (Augmented)"
@@ -62,15 +70,15 @@ enum EmbeddingStrategy: String, CaseIterable {
             let imageUri = track.image_url ?? "gs://\(config.bucket_name)/bench/images/\(track.id).jpg"
             return [
                 .text(track.prompt),
-                .file(uri: imageUri, mimeType: "image/jpeg")
+                .file(uri: imageUri, mimeType: mime(for: imageUri, defaultMime: "image/jpeg"))
             ]
         case .fullSpectrum:
             let imageUri = track.image_url ?? "gs://\(config.bucket_name)/bench/images/\(track.id).jpg"
             let audioUri = track.audio_url ?? "gs://\(config.bucket_name)/bench/audio/\(track.id).mp3"
             return [
                 .text("Prompt: \(track.prompt). Caption: \(track.caption)"),
-                .file(uri: imageUri, mimeType: "image/jpeg"),
-                .file(uri: audioUri, mimeType: "audio/mpeg")
+                .file(uri: imageUri, mimeType: mime(for: imageUri, defaultMime: "image/jpeg")),
+                .file(uri: audioUri, mimeType: mime(for: audioUri, defaultMime: "audio/mpeg"))
             ]
         }
     }
@@ -142,7 +150,13 @@ for strategy in EmbeddingStrategy.allCases {
                     if hasMissingAsset { continue }
                 }
 
-                let vector = try await embedService.getEmbedding(for: parts, authToken: token, projectID: config.project_id, location: "global")
+                let vector: [Float]
+                do {
+                    vector = try await embedService.getEmbedding(for: parts, authToken: token, projectID: config.project_id, location: "global")
+                } catch {
+                    print("    ❌ Failed on track \(track.id) (\(track.title)): \(error.localizedDescription)")
+                    continue
+                }
                 try store.insertTrack(id: track.id, title: track.title, prompt: track.prompt, vector: vector)
             }
             
@@ -154,10 +168,10 @@ for strategy in EmbeddingStrategy.allCases {
                 if probe.type == "image_probe" {
                     // Try to use probe image_url if exists, otherwise fallback
                     let uri = probe.image_url ?? "gs://\(config.bucket_name)/bench/images/\(probe.id).jpg"
-                    queryParts = [.file(uri: uri, mimeType: "image/jpeg")]
+                    queryParts = [.file(uri: uri, mimeType: mime(for: uri, defaultMime: "image/jpeg"))]
                 } else if probe.type == "audio_probe" {
                     let uri = probe.audio_url ?? "gs://\(config.bucket_name)/bench/audio/\(probe.id).mp3"
-                    queryParts = [.file(uri: uri, mimeType: "audio/mpeg")]
+                    queryParts = [.file(uri: uri, mimeType: mime(for: uri, defaultMime: "audio/mpeg"))]
                 }
                 
                 let queryVector = try await embedService.getEmbedding(for: queryParts, authToken: token, projectID: config.project_id, location: "us-central1")
