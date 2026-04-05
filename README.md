@@ -44,7 +44,7 @@ The fastest way to validate the system is using the included synthetic "Golden S
    ```
 
 ## Production Data Benchmarking
-For instructions on how to evaluate a large, existing Firestore corpus (e.g., 600+ tracks) using the **80/20 Corpus Split** and **Self-Retrieval Evaluation** methodology, please read the [**Production Benchmarking Guide**](PRODUCTION_BENCHMARKING.md).
+For instructions on how to evaluate a large, existing Firestore corpus (e.g., 600+ tracks) using the **80/20 Corpus Split** and **Self-Retrieval Evaluation** methodology, please read the [**Production Benchmarking Guide**](docs/PRODUCTION_BENCHMARKING.md).
 
 ## Results & Reports
 Benchmark results are automatically stored in `docs/benchmarks/run_[date].md`.
