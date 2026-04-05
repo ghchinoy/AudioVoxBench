@@ -10,9 +10,9 @@
 - **Reproducibility**: Provide a consistent "Golden Set" of tracks and queries to track semantic search improvements over time.
 
 ## Components
-1. **`TrackSeeder`**: A tool to generate audio (via Lyria 3) and images (via **Gemini 3.1 Flash Image / Nano Banana 2**) for a set of prompts defined in `golden_set.json`, and upload them to Google Cloud Storage.
-2. **`TrackIngestor`**: A tool to import existing tracks from a Firestore collection (e.g., production history) into the benchmark format.
-3. **`AudioVoxBench`**: The main evaluation tool. It iterates through strategies, indexes the "Golden Set" into a local vector database (sqlite-vec), and runs ground-truth queries to score recall.
+1. **`TrackSeeder`**: A tool to generate audio (via Lyria 3) and images (via **Gemini 3.1 Flash Image / Nano Banana 2**) for a set of synthetic prompts defined in `golden_set.json`, and upload them to Google Cloud Storage.
+2. **`TrackIngestor`**: A tool to import existing tracks from a Firestore collection (e.g., production history) into the benchmark format, featuring automated 80/20 Corpus Splitting for self-retrieval testing.
+3. **`AudioVoxBench`**: The main evaluation tool. It iterates through strategies, indexes the "Target Set" into a local vector database (sqlite-vec), and runs cross-modal queries to score recall.
 
 ## Prerequisites
 To run this suite independently, you need:
@@ -24,14 +24,15 @@ To run this suite independently, you need:
   - `GCP_ACCESS_TOKEN`: A valid OAuth2 token (run `gcloud auth print-access-token`).
   - Swift 5.9+ / macOS 14+.
 
-## Quick Start
+## Quick Start (Synthetic Data)
+The fastest way to validate the system is using the included synthetic "Golden Set".
 1. **Initial Setup**:
    ```bash
    cp config.json.sample config.json
    mkdir -p tests
    cp golden_set.json.sample tests/golden_set.json
    ```
-2. **Prepare Data**: Edit `config.json` with your GCP Project details and `tests/golden_set.json` with your desired prompts.
+2. **Prepare Data**: Edit `config.json` with your GCP Project details.
 3. **Seed Assets**: 
    ```bash
    export GCP_ACCESS_TOKEN=$(gcloud auth print-access-token)
@@ -42,41 +43,15 @@ To run this suite independently, you need:
    swift run AudioVoxBench
    ```
 
-## Benchmark Methodology
-The suite uses a **Golden Set** methodology to simulate real-world semantic search pressure. 
-
-1. **Test Set Generation**: We first use `TrackSeeder` to populate a local vector database with a diverse set of indexed tracks (the **Target Set**). These tracks are generated using specific prompts and captions to ensure a high-fidelity baseline.
-2. **Hold-out Probes**: We then execute a series of **Hold-out Probes**—media assets (audio clips and images) that are *intentionally excluded* from the indexed database. These probes represent "novel" user inputs.
-3. **Execution & Evaluation**: The application iterates through five embedding strategies (A-E). For each probe, it calculates the **Mean Reciprocal Rank (MRR)**—a metric that specifically rewards the "bullseye" rank of the semantically related track within the Target Set. This allows us to objectively determine which strategy offers the highest precision for cross-modal discovery.
-
-### Using Existing Assets
-`TrackSeeder` includes an optimization to skip expensive API generation if assets already exist locally. To use your own media library:
-1. Place your MP3 and JPG files in the `seed_data/` folder.
-2. Name them using the `id` from your `golden_set.json` (e.g., `track_001.mp3`, `track_001.jpg`).
-3. Run `swift run TrackSeeder`. The tool will detect the files, skip Lyria/Gemini generation, and perform only the GCS upload and metadata preparation.
-
-### Using Production Data (TrackIngestor)
-Instead of generating synthetic seeds, you can ingest real data from your Firestore database:
-
-```bash
-export GCP_ACCESS_TOKEN=$(gcloud auth print-access-token)
-
-# Ingest specific user data
-swift run TrackIngestor --email "user@example.com" --limit 100 --output "tests/production_data.json"
-
-# Ingest all data (Admin Mode)
-swift run TrackIngestor --limit 500 --output "tests/admin_dump.json"
-
-# Run benchmark on ingested data
-swift run AudioVoxBench tests/production_data.json
-```
+## Production Data Benchmarking
+For instructions on how to evaluate a large, existing Firestore corpus (e.g., 600+ tracks) using the **80/20 Corpus Split** and **Self-Retrieval Evaluation** methodology, please read the [**Production Benchmarking Guide**](PRODUCTION_BENCHMARKING.md).
 
 ## Results & Reports
-Benchmark results are stored in `docs/benchmarks/run_[date].md`.
+Benchmark results are automatically stored in `docs/benchmarks/run_[date].md`.
 Current "Winner": **Strategy C (Semantic Text-Augmentation)**. Strategy C consistently achieves a **1.0 MRR** even when queried with purely non-text media probes.
 
-## Pricing Estimates (15-Asset Run)
-Running this benchmark with 10 database tracks and 5 hold-out probes (13 audio clips, 12 images) costs approximately **$5.50 USD** on Vertex AI.
+## Pricing Estimates (15-Asset Synthetic Run)
+Running the synthetic benchmark with 10 database tracks and 5 hold-out probes (13 audio clips, 12 images) costs approximately **$5.50 USD** on Vertex AI.
 
 | Component | Quantity | Est. Unit Cost | Subtotal |
 | :--- | :--- | :--- | :--- |
@@ -85,4 +60,4 @@ Running this benchmark with 10 database tracks and 5 hold-out probes (13 audio c
 | **Embeddings** (Gemini 2) | 200+ calls | $0.025 / 1M tokens | **<$0.01** |
 | **TOTAL** | | | **~$5.49** |
 
-*Note: Strategy C (Text-only) is the most cost-effective as it bypasses raw image/audio generation costs for subsequent searches.*
+*Note: Strategy C (Text-only) is the most cost-effective as it bypasses raw image/audio generation costs for subsequent searches. Running the benchmark against existing production data is nearly free, as it only incurs the <$0.01 embedding cost.*

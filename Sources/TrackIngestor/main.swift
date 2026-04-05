@@ -15,6 +15,8 @@ struct TrackBench: Codable {
     let audio_url: String?
     let mosic: Double?
     let ground_truth_queries: [String]?
+    let type: String?
+    let expected_matches: [String]?
 }
 
 print("📥 AudioVox Track Ingestor")
@@ -33,7 +35,9 @@ let collectionId = config.firestore_collection ?? "musicbox_history"
 // 2. Parse Arguments
 var emailFilter: String? = nil
 var limit: Int = 50
-var outputFile: String = "tests/ingested_tracks.json"
+var outputDbFile: String = "tests/production_db.json"
+var outputProbesFile: String = "tests/production_probes.json"
+var splitRatio: Double = 0.0
 
 let args = CommandLine.arguments
 for i in 0..<args.count {
@@ -42,7 +46,13 @@ for i in 0..<args.count {
     } else if args[i] == "--limit" && i + 1 < args.count {
         limit = Int(args[i+1]) ?? 50
     } else if args[i] == "--output" && i + 1 < args.count {
-        outputFile = args[i+1]
+        outputDbFile = args[i+1]
+    } else if args[i] == "--output-db" && i + 1 < args.count {
+        outputDbFile = args[i+1]
+    } else if args[i] == "--output-probes" && i + 1 < args.count {
+        outputProbesFile = args[i+1]
+    } else if args[i] == "--split" && i + 1 < args.count {
+        splitRatio = Double(args[i+1]) ?? 0.0
     }
 }
 
@@ -57,7 +67,10 @@ print("📂 Collection: \(collectionId)")
 if let email = emailFilter {
     print("👤 Filtering by email: \(email)")
 } else {
-    print("👑 Admin Mode: Fetching all tracks")
+    print("👑 Admin Mode: Fetching up to \(limit) tracks")
+}
+if splitRatio > 0 {
+    print("✂️  Corpus Split: \(Int(splitRatio * 100))% will be held out as probes")
 }
 
 // 3. Construct Firestore Query
@@ -100,7 +113,8 @@ Task {
         }
         
         let rawResults = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] ?? []
-        var ingestedTracks: [TrackBench] = []
+        var dbTracks: [TrackBench] = []
+        var probeTracks: [TrackBench] = []
         
         for result in rawResults {
             guard let doc = result["document"] as? [String: Any],
@@ -129,22 +143,53 @@ Task {
                 image_url: val("image_url"),
                 audio_url: val("audio_url"),
                 mosic: dVal("mosic"),
-                ground_truth_queries: [] // Can't auto-know these from production
+                ground_truth_queries: nil,
+                type: nil,
+                expected_matches: nil
             )
-            ingestedTracks.append(track)
+            
+            // If splitting, randomly hold out tracks as probes
+            if splitRatio > 0 && Double.random(in: 0..<1) < splitRatio {
+                // Randomly assign as an audio or image probe for variety
+                let probeType = Bool.random() ? "audio_probe" : "image_probe"
+                
+                let probeTrack = TrackBench(
+                    id: id,
+                    title: track.title,
+                    prompt: track.prompt,
+                    caption: track.caption,
+                    image_url: track.image_url,
+                    audio_url: track.audio_url,
+                    mosic: track.mosic,
+                    ground_truth_queries: nil,
+                    type: probeType,
+                    expected_matches: [id] // Self-Retrieval!
+                )
+                probeTracks.append(probeTrack)
+            }
+            
+            // ALL tracks go into the database target set
+            dbTracks.append(track)
         }
         
-        print("✅ Successfully ingested \(ingestedTracks.count) tracks.")
+        print("✅ Successfully ingested \(dbTracks.count) total tracks for the database.")
+        if splitRatio > 0 {
+            print("   ↳ Designated \(probeTracks.count) as hold-out probes.")
+        }
         
-        // Save to file
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
-        let encodedData = try encoder.encode(ingestedTracks)
         
-        let outputURL = URL(fileURLWithPath: outputFile)
-        try? FileManager.default.createDirectory(at: outputURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try encodedData.write(to: outputURL)
-        print("💾 Saved to: \(outputFile)")
+        let dbURL = URL(fileURLWithPath: outputDbFile)
+        try? FileManager.default.createDirectory(at: dbURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try encoder.encode(dbTracks).write(to: dbURL)
+        print("💾 Saved Database to: \(outputDbFile)")
+        
+        if splitRatio > 0 {
+            let probesURL = URL(fileURLWithPath: outputProbesFile)
+            try encoder.encode(probeTracks).write(to: probesURL)
+            print("💾 Saved Probes to: \(outputProbesFile)")
+        }
         
     } catch {
         print("❌ Error during ingestion: \(error.localizedDescription)")

@@ -1,0 +1,67 @@
+# AudioVoxBench: Production Benchmarking Guide
+
+While `AudioVoxBench` comes with a "Golden Set" of synthetic prompts (`tests/golden_set.json`) to quickly validate embeddings, its true power lies in analyzing your **live production data**. 
+
+This guide details how to benchmark against a large, existing Firestore corpus (e.g., 600+ tracks) with zero manual labeling, using a technique called **Self-Retrieval Evaluation**.
+
+## 1. The Challenge of Production Data
+When evaluating a massive, unlabeled dataset, you lack "ground truth" search queries (i.e., you don't know exactly what text a user *would* type to find a specific track). Furthermore, generating new queries or evaluating results manually does not scale.
+
+To solve this, we use the **80/20 Corpus Split** methodology.
+
+## 2. The "Self-Retrieval" Methodology
+Instead of inventing synthetic text queries, we use the tracks' own media (Audio and Images) as the search probes.
+
+1. **The Target Set (80%)**: The vast majority of your tracks are indexed into the local `sqlite-vec` database using the five embedding strategies (A-E).
+2. **The Probe Set (20%)**: A random 20% of your tracks are held out. We take their raw `.mp3`/`.wav` files or `.jpg`/`.png` covers and use them as the *search query*.
+3. **The Metric**: We measure if the system can find the *exact same track* in the Target Set using only its media. 
+
+If Strategy C (Text-only indexing) can successfully retrieve Track X when provided with the raw audio of Track X, it proves that the model's cross-modal semantic space is highly unified and robust.
+
+## 3. Workflow: Ingestion & Splitting
+
+The `TrackIngestor` tool has been enhanced to automatically perform this split for you directly from Firestore.
+
+### Configuration
+Ensure your `config.json` points to your production bucket and database:
+```json
+{
+  "project_id": "generative-bazaar-001",
+  "firestore_database": "musicbox",
+  "firestore_collection": "musicbox_history",
+  ...
+}
+```
+
+### Ingestion Execution
+Run the ingestor with the `--split` flag. For a 600-track database, a `0.2` split will index ~480 tracks and hold out ~120 as probes.
+
+```bash
+export GCP_ACCESS_TOKEN=$(gcloud auth print-access-token)
+
+# Fetch 600 tracks, split 20% into probes
+swift run TrackIngestor --limit 600 --split 0.2
+```
+
+This automatically generates two files:
+- `tests/production_db.json` (The Target Set)
+- `tests/production_probes.json` (The Probe Set, pre-configured for Self-Retrieval)
+
+## 4. Workflow: Evaluation
+
+Once the split is generated, run the benchmark suite against these new files:
+
+```bash
+swift run AudioVoxBench tests/production_db.json tests/production_probes.json
+```
+
+The benchmark will iterate through Strategies A-E and calculate the Mean Reciprocal Rank (MRR). A high MRR on Strategy C confirms that text-augmentation is sufficient for your current catalog density. 
+
+## 5. Important: API Limits & Large Audio
+When benchmarking against real production data, you may encounter `INVALID_ARGUMENT` errors from the Gemini Embedding 2 API during Strategy E (Full-Spectrum).
+
+**The Cause**: The Gemini Embedding 2 API currently has strict, undocumented payload limits for raw media. While it handles images flawlessly, it will reject raw audio files that are too large (pragmatically, anything over ~2MB to 3.5MB, or roughly >1 minute of high-fidelity WAV audio). 
+
+**The Solution**: 
+- **Graceful Degradation**: `AudioVoxBench` is designed to gracefully catch and report these API errors. If a track is too large, it will print a warning and skip that specific track for Strategy E, while still completing the benchmark for all other valid tracks and strategies.
+- **Future Optimization**: If Strategy E becomes the dominant production approach, you should segment or compress your audio files (e.g., passing only the first 30 seconds as a lower-bitrate MP3) before requesting the embedding. For semantic "vibe" checking, the first 15-30 seconds provides ample acoustic entropy.
