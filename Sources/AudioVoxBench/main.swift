@@ -154,6 +154,13 @@ for strategy in EmbeddingStrategy.allCases {
                     }
                 }
                 
+                if probe.id == "probe_e1" {
+                    print("    🔍 Jitter Analysis for [probe_e1]:")
+                    for (index, result) in results.prefix(5).enumerated() {
+                        print("      \(index + 1). \(result.id): \(String(format: "%.4f", result.distance))")
+                    }
+                }
+                
                 if let rank = bestRank {
                     totalRR += 1.0 / Double(rank + 1)
                     print("    ✅ Probe [\(probe.id)] matched '\(results[rank].id)' at rank \(rank + 1)")
