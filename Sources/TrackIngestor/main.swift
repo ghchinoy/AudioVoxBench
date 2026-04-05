@@ -107,7 +107,7 @@ Task {
                   let fields = doc["fields"] as? [String: Any],
                   let name = doc["name"] as? String else { continue }
             
-            let id = name.components(separatedBy: "/").last ?? UUID().uuid4().uuidString
+            let id = name.components(separatedBy: "/").last ?? UUID().uuidString
             
             func val(_ key: String) -> String? {
                 let dict = fields[key] as? [String: Any]
