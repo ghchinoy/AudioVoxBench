@@ -104,3 +104,28 @@ The greatest advantage of benchmarking your production dataset is that it bypass
 - **600-Track Benchmark** (480 DB + 120 Probes * 5 strategies = ~3,000 embedding calls): **~$0.07 USD**
 
 You can run deep, cross-modal semantic analyses on massive production catalogs for pennies, making continuous evaluation highly practical.
+
+## 9. Troubleshooting Swift Package Manager (Git Issues)
+When running the benchmark on a new machine or a remote server, Swift Package Manager (SPM) might fail to fetch dependencies like `GRDB.swift` due to global Git configuration issues.
+
+### "fatal: cannot use bare repository (safe.bareRepository is 'explicit')"
+This is caused by a Git security update (CVE-2024-32002) that prevents tools from operating inside "bare" repositories by default. Because SPM uses bare repositories to cache dependencies, the `swift run` build process will break.
+
+**Solution**: Tell Git on that specific machine to trust bare repositories globally:
+```bash
+git config --global safe.bareRepository all
+```
+*(If errors persist, clear the SPM cache by running `rm -rf .build` and `rm -rf ~/Library/Caches/org.swift.swiftpm/` before trying again).*
+
+### "git@github.com: Permission denied (publickey)"
+Even though `AudioVoxBench` requests dependencies via `https://`, your machine might have a global Git override forcing it to use SSH (`git@github.com:`), and the machine lacks authorized SSH keys.
+
+**Solution**: Check for and remove the HTTPS-to-SSH override:
+```bash
+# Check for the override
+git config --global --get-regexp url
+
+# If you see `url.git@github.com:.insteadof https://github.com/`, remove it:
+git config --global --unset url.git@github.com:.insteadof
+```
+Alternatively, if the machine *must* use SSH, ensure your SSH key is added to the ssh-agent (`ssh-add ~/.ssh/id_ed25519`) and authorized on your GitHub account.
