@@ -130,7 +130,7 @@ final class EmbeddingService: @unchecked Sendable {
                 if httpResponse.statusCode == 200 {
                     let result = try JSONDecoder().decode(EmbeddingResponse.self, from: data)
                     return result.embedding.values
-                } else if httpResponse.statusCode == 429 || httpResponse.statusCode == 503 {
+                } else if httpResponse.statusCode == 429 || httpResponse.statusCode == 503 || httpResponse.statusCode == 500 {
                     print("    ⚠️ API Rate limit/Overload (\(httpResponse.statusCode)). Retrying in \(delay) seconds...")
                     try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                     delay *= 2
