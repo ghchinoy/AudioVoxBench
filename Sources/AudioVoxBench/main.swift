@@ -102,8 +102,10 @@ guard let token = ProcessInfo.processInfo.environment["GCP_ACCESS_TOKEN"] else {
 
 // 2. Parse Arguments
 // Usage: swift run AudioVoxBench [tracks.json] [probes.json]
-let dbPath = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "tests/golden_set_phase2.json"
-let probesPath = CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "tests/probes_phase2.json"
+let isVerbose = CommandLine.arguments.contains("--verbose")
+let filteredArgs = CommandLine.arguments.filter { $0 != "--verbose" }
+let dbPath = filteredArgs.count > 1 ? filteredArgs[1] : "tests/golden_set_phase2.json"
+let probesPath = filteredArgs.count > 2 ? filteredArgs[2] : "tests/probes_phase2.json"
 
 // 3. Load Database Tracks
 let dbURL = URL(fileURLWithPath: dbPath)
@@ -174,7 +176,13 @@ for strategy in EmbeddingStrategy.allCases {
                     queryParts = [.file(uri: uri, mimeType: mime(for: uri, defaultMime: "audio/mpeg"))]
                 }
                 
-                let queryVector = try await embedService.getEmbedding(for: queryParts, authToken: token, projectID: config.project_id, location: "us-central1")
+                let queryVector: [Float]
+                do {
+                    queryVector = try await embedService.getEmbedding(for: queryParts, authToken: token, projectID: config.project_id, location: "us-central1")
+                } catch {
+                    print("    ❌ Failed to embed probe \(probe.id): \(error.localizedDescription)")
+                    continue
+                }
                 let results = try store.search(queryVector: queryVector, limit: 10)
                 
                 var bestRank: Int? = nil
@@ -195,6 +203,17 @@ for strategy in EmbeddingStrategy.allCases {
                     totalRR += 1.0 / Double(rank + 1)
                     print("    ✅ Probe [\(probe.id)] matched '\(results[rank].id)' at rank \(rank + 1)")
                 } else {
+                    print("    ❌ Probe [\(probe.id)] failed to find expected matches in top 10.")
+                }
+                
+                if isVerbose {
+                    print("    🔍 Detailed matches for [\(probe.id)]:")
+                    for (index, result) in results.enumerated() {
+                        let matchedTitle = tracks.first(where: { $0.id == result.id })?.title ?? "Unknown"
+                        print("      \(index + 1). \(matchedTitle) (\(result.id)) - distance: \(String(format: "%.4f", result.distance))")
+                    }
+                } else if bestRank == nil {
+                    // Always show a little context if it completely failed
                     print("    ❓ Probe [\(probe.id)] top 3 matches:")
                     for (index, result) in results.prefix(3).enumerated() {
                         let matchedTitle = tracks.first(where: { $0.id == result.id })?.title ?? "Unknown"

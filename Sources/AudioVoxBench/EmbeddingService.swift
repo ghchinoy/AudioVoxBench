@@ -121,15 +121,28 @@ final class EmbeddingService: @unchecked Sendable {
     }
     
     private func executeEmbeddingRequest(_ request: URLRequest) async throws -> [Float] {
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw NSError(domain: "EmbeddingService", code: 1, userInfo: [NSLocalizedDescriptionKey: "API returned error: \(errorBody)"])
+        var delay = 2.0
+        var retries = 6
+        while retries > 0 {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            if let httpResponse = response as? HTTPURLResponse {
+                if httpResponse.statusCode == 200 {
+                    let result = try JSONDecoder().decode(EmbeddingResponse.self, from: data)
+                    return result.embedding.values
+                } else if httpResponse.statusCode == 429 || httpResponse.statusCode == 503 {
+                    print("    ⚠️ API Rate limit/Overload (\(httpResponse.statusCode)). Retrying in \(delay) seconds...")
+                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                    delay *= 2
+                    retries -= 1
+                    continue
+                } else {
+                    let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
+                    throw NSError(domain: "EmbeddingService", code: 1, userInfo: [NSLocalizedDescriptionKey: "API returned error (\(httpResponse.statusCode)): \(errorBody)"])
+                }
+            }
         }
-        
-        let result = try JSONDecoder().decode(EmbeddingResponse.self, from: data)
-        return result.embedding.values
+        throw NSError(domain: "EmbeddingService", code: 3, userInfo: [NSLocalizedDescriptionKey: "Max retries reached for API limits."])
     }
 }
 
