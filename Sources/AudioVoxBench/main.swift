@@ -84,8 +84,48 @@ enum EmbeddingStrategy: String, CaseIterable {
     }
 }
 
+
+func getFreshToken() -> String? {
+    print("    🔄 Refreshing GCP Access Token via gcloud...")
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+    process.arguments = ["gcloud", "auth", "print-access-token"]
+    let pipe = Pipe()
+    process.standardOutput = pipe
+    do {
+        try process.run()
+        process.waitUntilExit()
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        let token = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (token?.isEmpty == false) ? token : nil
+    } catch {
+        return nil
+    }
+}
+
+// Vector Cache
+var vectorCache: [String: [Float]] = [:]
+let cacheURL = URL(fileURLWithPath: "tests/vector_cache.json")
+
+func loadCache() {
+    if let cacheData = try? Data(contentsOf: cacheURL),
+       let loadedCache = try? JSONDecoder().decode([String: [Float]].self, from: cacheData) {
+        vectorCache = loadedCache
+        print("🧠 Loaded \(vectorCache.count) vectors from cache.")
+    }
+}
+
+func saveCache() {
+    if let data = try? JSONEncoder().encode(vectorCache) {
+        try? data.write(to: cacheURL)
+    }
+}
+
 // --- START ---
 print("🚀 AudioVox Cross-Modal Discovery Evaluation")
+
+loadCache()
+
 
 // 1. Load Config
 let configURL = URL(fileURLWithPath: "config.json")
@@ -95,8 +135,9 @@ guard let configData = try? Data(contentsOf: configURL),
     exit(1)
 }
 
-guard let token = ProcessInfo.processInfo.environment["GCP_ACCESS_TOKEN"] else {
-    print("❌ Error: GCP_ACCESS_TOKEN not set.")
+var currentToken = ProcessInfo.processInfo.environment["GCP_ACCESS_TOKEN"] ?? getFreshToken()
+guard currentToken != nil else {
+    print("❌ Error: GCP_ACCESS_TOKEN not set and failed to generate.")
     exit(1)
 }
 
@@ -127,6 +168,36 @@ print("📍 Indexing Database: \(dbPath) (\(tracks.count) tracks)")
 print("🔍 Querying with Probes: \(probesPath) (\(probes.count) probes)")
 
 let embedService = EmbeddingService()
+
+func getEmbeddingCached(id: String, parts: [EmbeddingService.ContentPart], strategy: String, projectID: String, location: String) async throws -> [Float] {
+    let cacheKey = "\(strategy)_\(id)"
+    if let cached = vectorCache[cacheKey] {
+        return cached
+    }
+    
+    var attempts = 0
+    while attempts < 2 {
+        guard let token = currentToken else {
+            throw NSError(domain: "Bench", code: 0, userInfo: [NSLocalizedDescriptionKey: "No token available"])
+        }
+        
+        do {
+            let vector = try await embedService.getEmbedding(for: parts, authToken: token, projectID: projectID, location: location)
+            vectorCache[cacheKey] = vector
+            saveCache()
+            return vector
+        } catch {
+            if error.localizedDescription.contains("(401)") {
+                currentToken = getFreshToken()
+                attempts += 1
+                continue
+            } else {
+                throw error
+            }
+        }
+    }
+    throw NSError(domain: "Bench", code: 0, userInfo: [NSLocalizedDescriptionKey: "Failed after token refresh."])
+}
 var summaryResults: [String: Double] = [:]
 
 for strategy in EmbeddingStrategy.allCases {
@@ -154,7 +225,7 @@ for strategy in EmbeddingStrategy.allCases {
 
                 let vector: [Float]
                 do {
-                    vector = try await embedService.getEmbedding(for: parts, authToken: token, projectID: config.project_id, location: "global")
+                    vector = try await getEmbeddingCached(id: track.id, parts: parts, strategy: strategy.rawValue, projectID: config.project_id, location: "global")
                 } catch {
                     print("    ❌ Failed on track \(track.id) (\(track.title)): \(error.localizedDescription)")
                     continue
@@ -178,7 +249,7 @@ for strategy in EmbeddingStrategy.allCases {
                 
                 let queryVector: [Float]
                 do {
-                    queryVector = try await embedService.getEmbedding(for: queryParts, authToken: token, projectID: config.project_id, location: "us-central1")
+                    queryVector = try await getEmbeddingCached(id: "probe_\(probe.id)", parts: queryParts, strategy: strategy.rawValue, projectID: config.project_id, location: "us-central1")
                 } catch {
                     print("    ❌ Failed to embed probe \(probe.id): \(error.localizedDescription)")
                     continue
@@ -222,7 +293,7 @@ for strategy in EmbeddingStrategy.allCases {
                 }
             }
             
-            let mrr = totalRR / Double(probes.count)
+            let mrr = probes.count > 0 ? (totalRR / Double(probes.count)) : 0.0
             summaryResults[strategy.rawValue] = mrr
             print("  📈 MRR for \(strategy.rawValue): \(String(format: "%.4f", mrr))")
             
