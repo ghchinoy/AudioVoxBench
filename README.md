@@ -50,8 +50,18 @@ For instructions on how to evaluate a large, existing Firestore corpus (e.g., 60
 
 ## Results & Reports
 Benchmark results are automatically stored in `docs/benchmarks/run_[date].md`.
-Current "Winner": **Strategy C (Semantic Text-Augmentation)**. Strategy C consistently achieves a **1.0 MRR** even when queried with purely non-text media probes.
 
+### Production Scale Findings (600 Tracks)
+While synthetic tests on small catalogs show **Strategy C (Semantic Text-Augmentation)** as the winner, running AudioVoxBench on a real production corpus of 600 tracks reveals a critical "Saturation Point":
+
+| Strategy | MRR (600 Tracks) |
+| :--- | :--- |
+| **A (Baseline)** | 0.2931 |
+| **C (Semantic)** | 0.3336 |
+| **D (Multimodal)** | **0.4887** (Winner) |
+| **E (Full-Spectrum)** | 0.4125 |
+
+At scale, text descriptions collide. **Strategy D (Text + Image)** provides the necessary visual entropy to distinguish nearly identical tracks, making it the definitive choice for growing catalogs. Strategy E (Audio) suffers from undocumented API payload limits (>3MB) and 500 errors, which degrades search quality unless the audio is truncated to <30 seconds.
 ## Pricing Estimates (15-Asset Synthetic Run)
 Running the synthetic benchmark with 10 database tracks and 5 hold-out probes (13 audio clips, 12 images) costs approximately **$5.50 USD** on Vertex AI.
 
