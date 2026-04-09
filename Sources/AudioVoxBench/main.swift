@@ -204,8 +204,11 @@ func getEmbeddingCached(id: String, parts: [EmbeddingService.ContentPart], strat
 }
 var summaryResults: [String: Double] = [:]
 
+var strategyDurations: [String: TimeInterval] = [:]
+
 for strategy in EmbeddingStrategy.allCases {
     print("\n--- Testing Strategy: \(strategy.rawValue) ---")
+    let strategyStartTime = Date()
     
     let semaphore = DispatchSemaphore(value: 0)
     
@@ -299,6 +302,9 @@ for strategy in EmbeddingStrategy.allCases {
             
             let mrr = probes.count > 0 ? (totalRR / Double(probes.count)) : 0.0
             summaryResults[strategy.rawValue] = mrr
+            let elapsed = Date().timeIntervalSince(strategyStartTime)
+            strategyDurations[strategy.rawValue] = elapsed
+            print("  ⏱️ Time Elapsed: \(String(format: "%.2f", elapsed)) seconds")
             print("  📈 MRR for \(strategy.rawValue): \(String(format: "%.4f", mrr))")
             
         } catch {
@@ -335,13 +341,14 @@ var report = """
 
 ## Results (Mean Reciprocal Rank)
 
-| Strategy | MRR |
-| :--- | :--- |
+| Strategy | MRR | Time (s) |
+| :--- | :--- | :--- |
 """
 
 for strategy in EmbeddingStrategy.allCases {
     let score = summaryResults[strategy.rawValue] ?? 0
-    report += "\n| \(strategy.rawValue) | \(String(format: "%.4f", score)) |"
+    let duration = strategyDurations[strategy.rawValue] ?? 0
+    report += "\n| \(strategy.rawValue) | \(String(format: "%.4f", score)) | \(String(format: "%.2f", duration)) |"
 }
 
 do {
