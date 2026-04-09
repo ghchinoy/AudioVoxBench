@@ -57,26 +57,30 @@ enum EmbeddingStrategy: String, CaseIterable {
     case fullSpectrum = "E (Full-Spectrum)"
     
     func parts(track: TrackBench, config: BenchConfig) -> [EmbeddingService.ContentPart] {
+        func sanitize(_ text: String) -> String {
+            return text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? " " : text
+        }
+        
         switch self {
         case .promptOnly:
-            return [.text(track.prompt)]
+            return [.text(sanitize(track.prompt))]
         case .promptAndCaption:
-            return [.text("Prompt: \(track.prompt). Visual: \(track.caption)")]
+            return [.text(sanitize("Prompt: \(track.prompt). Visual: \(track.caption)"))]
         case .semantic:
             let quality = (track.mosic ?? 4.5) > 4.5 ? "Pristine, high-fidelity audio." : "Standard audio."
-            return [.text("Prompt: \(track.prompt). Visual: \(track.caption). Quality: \(quality)")]
+            return [.text(sanitize("Prompt: \(track.prompt). Visual: \(track.caption). Quality: \(quality)"))]
         case .multimodalImage:
             // Use the image_url from the track if it exists, otherwise fall back to bench path
             let imageUri = track.image_url ?? "gs://\(config.bucket_name)/bench/images/\(track.id).jpg"
             return [
-                .text(track.prompt),
+                .text(sanitize(track.prompt)),
                 .file(uri: imageUri, mimeType: mime(for: imageUri, defaultMime: "image/jpeg"))
             ]
         case .fullSpectrum:
             let imageUri = track.image_url ?? "gs://\(config.bucket_name)/bench/images/\(track.id).jpg"
             let audioUri = track.audio_url ?? "gs://\(config.bucket_name)/bench/audio/\(track.id).mp3"
             return [
-                .text("Prompt: \(track.prompt). Caption: \(track.caption)"),
+                .text(sanitize("Prompt: \(track.prompt). Caption: \(track.caption)")),
                 .file(uri: imageUri, mimeType: mime(for: imageUri, defaultMime: "image/jpeg")),
                 .file(uri: audioUri, mimeType: mime(for: audioUri, defaultMime: "audio/mpeg"))
             ]
